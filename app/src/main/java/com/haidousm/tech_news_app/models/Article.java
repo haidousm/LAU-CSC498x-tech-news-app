@@ -33,4 +33,8 @@ public class Article {
         this.content = content;
     }
 
+    @Override
+    public String toString() {
+        return this.title;
+    }
 }
