@@ -20,6 +20,13 @@ public class WebViewActivity extends AppCompatActivity {
         webView.getSettings().setLoadsImagesAutomatically(true);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.setScrollBarStyle(WebView.SCROLLBARS_INSIDE_OVERLAY);
+
+        if (!articleContent.contains("<html")) {
+            articleContent = "<html><head></head><body>" + articleContent + "</body></html>";
+        }
+
+        articleContent = articleContent.replace("#", "");
+
         webView.loadData(articleContent, "text/html", "UTF-8");
         Log.i("HTML", articleContent);
     }
