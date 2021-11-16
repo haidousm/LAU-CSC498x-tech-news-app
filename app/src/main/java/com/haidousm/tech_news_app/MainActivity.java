@@ -2,9 +2,14 @@ package com.haidousm.tech_news_app;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
 
 import com.haidousm.tech_news_app.models.Article;
 
@@ -17,6 +22,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -34,6 +40,8 @@ public class MainActivity extends AppCompatActivity {
 
     DatabaseHelper db;
 
+    ArrayAdapter<Article> arrayAdapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,6 +50,23 @@ public class MainActivity extends AppCompatActivity {
 //        this.db.onUpgrade(this.db.getWritableDatabase(), 1, 1);
 //        DownloadJSONData jsonDownloader = new DownloadJSONData();
 //        jsonDownloader.execute(topStoriesAPIUrl);
+
+        List<Article> articlesList = this.db.getAllArticles();
+        this.db.close();
+
+        ListView articlesListView = findViewById(R.id.articlesListView);
+        arrayAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, articlesList);
+        articlesListView.setAdapter(arrayAdapter);
+
+        articlesListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Article clickedArticle = (Article) parent.getAdapter().getItem(position);
+                Intent intent = new Intent(getApplicationContext(), WebViewActivity.class);
+                intent.putExtra("articleContent", clickedArticle.getContent());
+                MainActivity.this.startActivity(intent);
+            }
+        });
     }
 
     private void parseJSON(String jsonRes) {
@@ -71,16 +96,16 @@ public class MainActivity extends AppCompatActivity {
         } else if (this.currentDownloadType == DOWNLOAD_TYPE.ARTICLE_DETAILS) {
             try {
                 JSONObject jsonObject = new JSONObject(jsonRes);
-                if(jsonObject.has("url")){
+                if (jsonObject.has("url")) {
                     String contentUrl = jsonObject.getString("url");
                     contentUrl = contentUrl.replace("http://", "");
                     contentUrl = "https://" + contentUrl.replace("https://", "");
                     Article newArticle = new Article(jsonObject.getLong("id"), jsonObject.getString("title"));
                     new DownloadHTMLContent(newArticle).execute(contentUrl);
-                }else if(jsonObject.has("text")){
+                } else if (jsonObject.has("text")) {
                     Article newArticle = new Article(jsonObject.getLong("id"), jsonObject.getString("title"), jsonObject.getString("text"));
                     this.saveArticle(newArticle);
-                }else{
+                } else {
                     Log.i("TAG", "parseJSON: ");
                 }
             } catch (JSONException e) {
