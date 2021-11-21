@@ -2,7 +2,9 @@ package com.haidousm.tech_news_app;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
@@ -38,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private final String topStoriesAPIUrl = String.format("%s/topstories.json", apiRootUrl);
     private final String unformattedArticleDetailAPIUrl = String.format("%s/item", apiRootUrl) + "/%s.json";
 
+    private List<Article> articlesList = new ArrayList<>();
     DatabaseHelper db;
 
     ArrayAdapter<Article> arrayAdapter;
@@ -47,12 +50,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         this.db = new DatabaseHelper(this);
-//        this.db.onUpgrade(this.db.getWritableDatabase(), 1, 1);
-//        DownloadJSONData jsonDownloader = new DownloadJSONData();
-//        jsonDownloader.execute(topStoriesAPIUrl);
+        SharedPreferences sharedPreferences = getSharedPreferences("FETCHED_DATA_PREFS", Context.MODE_PRIVATE);
+        boolean fetchedData = sharedPreferences.getBoolean("fetched_data", false);
 
-        List<Article> articlesList = this.db.getAllArticles();
-        this.db.close();
+        if(!fetchedData){
+            this.db.onUpgrade(this.db.getWritableDatabase(), 1, 1);
+            DownloadJSONData jsonDownloader = new DownloadJSONData();
+            jsonDownloader.execute(topStoriesAPIUrl);
+        }else{
+            articlesList = this.db.getAllArticles();
+            this.db.close();
+        }
 
         ListView articlesListView = findViewById(R.id.articlesListView);
         arrayAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, articlesList);
@@ -86,7 +94,6 @@ public class MainActivity extends AppCompatActivity {
 
             this.currentDownloadType = DOWNLOAD_TYPE.ARTICLE_DETAILS;
 
-            // TODO: maybe batch download task them
             for (Long articleID :
                     listOfIDs) {
                 DownloadJSONData jsonDownloader = new DownloadJSONData();
@@ -105,8 +112,6 @@ public class MainActivity extends AppCompatActivity {
                 } else if (jsonObject.has("text")) {
                     Article newArticle = new Article(jsonObject.getLong("id"), jsonObject.getString("title"), jsonObject.getString("text"));
                     this.saveArticle(newArticle);
-                } else {
-                    Log.i("TAG", "parseJSON: ");
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -117,6 +122,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void saveArticle(Article article) {
         this.db.insertArticle(article);
+        this.arrayAdapter.add(article);
+        if(articlesList.size() == MAX_NUMBER_OF_ARTICLES){
+            SharedPreferences sharedPreferences = getSharedPreferences("FETCHED_DATA_PREFS", Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putBoolean("fetched_data", true);
+            editor.apply();
+
+        }
     }
 
     @Override
